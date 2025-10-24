@@ -1,34 +1,54 @@
 const { Client, Intents, MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
-const axios = require('axios');
-const cheerio = require('cheerio');
+const https = require('https');
+const http = require('http');
 
 const client = new Client({ 
   intents: [
     Intents.FLAGS.GUILDS, 
-    Intents.FLAGS.GUILD_MESSAGES, 
-    Intents.FLAGS.MESSAGE_CONTENT
+    Intents.FLAGS.GUILD_MESSAGES
   ]
 });
 
 const BOT_VERSION = "2.6.1";
 
-let serverConfig = { 
-  notificationChannel: null, 
-  mentionRole: null, 
-  checkInterval: 300000 
-};
+// Función para hacer requests HTTP sin axios
+function httpRequest(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const protocol = urlObj.protocol === 'https:' ? https : http;
+    
+    const reqOptions = {
+      hostname: urlObj.hostname,
+      port: urlObj.port,
+      path: urlObj.pathname + urlObj.search,
+      method: options.method || 'GET',
+      headers: options.headers || {}
+    };
 
-const REDDIT_FANART_SR = ["DDLC", "DDLCMods", "ProjectClub"];
-const REDDIT_MERCH_SR = ["DDLC", "DDLCMods", "ProjectClub"];
+    const req = protocol.request(reqOptions, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve({ status: res.statusCode, data: JSON.parse(data) });
+          } catch {
+            resolve({ status: res.statusCode, data });
+          }
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}`));
+        }
+      });
+    });
 
-const TWITTER_SOURCES = {
-  pclub: 'https://twitrss.me/twitter_user_to_rss/?user=ProjectClub_',
-  teamSalvato: 'https://twitrss.me/twitter_user_to_rss/?user=TeamSalvato',
-  ddlcMods: 'https://twitrss.me/twitter_user_to_rss/?user=DDLCMods',
-  ddlcGame: 'https://twitrss.me/twitter_user_to_rss/?user=DDLCGame'
-};
-
-let lastPosts = {};
+    req.on('error', reject);
+    req.setTimeout(5000, () => {
+      req.destroy();
+      reject(new Error('Timeout'));
+    });
+    req.end();
+  });
+}
 
 // Base de datos de citas en español (50 por personaje)
 const CITAS_DDLC = {
@@ -294,47 +314,13 @@ const CITAS_DDLC = {
   ]
 };
 
-async function isLinkAlive(url) {
-  try {
-    const r = await axios.head(url, { maxRedirects: 2, timeout: 5000 });
-    return r.status >= 200 && r.status < 400;
-  } catch {
-    try {
-      const r = await axios.get(url, { maxRedirects: 2, timeout: 5000 });
-      return r.status >= 200 && r.status < 400;
-    } catch {
-      return false;
-    }
-  }
-}
-
-async function sendNotification(embed, type) {
-  if (!serverConfig.notificationChannel) return;
-  const ch = await client.channels.fetch(serverConfig.notificationChannel).catch(() => null);
-  if (!ch) return;
-  
-  const embedData = embed.toJSON();
-  if (embedData.url && !(await isLinkAlive(embedData.url))) return;
-  if (embedData.image?.url && !(await isLinkAlive(embedData.image.url))) embed.setImage(null);
-  
-  const prefix = {
-    pclub_video: '🎥 Nuevo video P Club',
-    pclub_tweet: '🦠Tweet P Club',
-    ddlc_tweet: '🦠Tweet DDLC',
-    ddlc_news: '📰 Noticia DDLC',
-    merch_week: '🛍️ Merch semanal'
-  }[type] || '🔔 Actualización';
-  
-  await ch.send({ content: prefix, embeds: [embed] });
-}
-
 async function fetchRedditPosts(subreddit, opts = {}) {
   try {
     const limit = opts.limit || 50;
     const sort = opts.sort || 'new';
     const t = opts.t || 'week';
     const url = `https://www.reddit.com/r/${subreddit}/${sort}.json?limit=${limit}&t=${t}`;
-    const res = await axios.get(url, { headers: { 'User-Agent': 'ClubAssistant/2.6' } });
+    const res = await httpRequest(url, { headers: { 'User-Agent': 'ClubAssistant/2.6' } });
     return (res.data?.data?.children || []).map(c => c.data);
   } catch {
     return [];
@@ -375,7 +361,7 @@ async function getFanartsByDoki(doki, limit = 50) {
     natsuki: ["DDLC", "ProjectClub"]
   };
   
-  const srs = doki === 'random' ? REDDIT_FANART_SR : (mapping[doki] || REDDIT_FANART_SR);
+  const srs = doki === 'random' ? ["DDLC", "DDLCMods", "ProjectClub"] : (mapping[doki] || ["DDLC", "ProjectClub"]);
   let pool = [];
   
   for (const sr of srs) {
@@ -412,7 +398,7 @@ async function searchYouTubeLatestSpanish(query = 'ddlc español') {
   try {
     const q = encodeURIComponent(query);
     const url = `https://www.youtube.com/results?search_query=${q}&sp=EgIQAQ%253D%253D`;
-    const res = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const res = await httpRequest(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
     const html = res.data;
     const match = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
     if (!match) return null;
@@ -456,7 +442,6 @@ const slashCommands = [
     async execute(interaction) {
       let personaje = interaction.options.getString('personaje') || 'random';
       
-      // Si es random, elegir personaje aleatorio
       if (personaje === 'random') {
         const personajes = ['monika', 'sayori', 'yuri', 'natsuki', 'mc'];
         personaje = personajes[Math.floor(Math.random() * personajes.length)];
@@ -465,7 +450,6 @@ const slashCommands = [
       const citas = CITAS_DDLC[personaje];
       const citaAleatoria = citas[Math.floor(Math.random() * citas.length)];
       
-      // Colores por personaje
       const colores = {
         monika: '#00D166',
         sayori: '#22A7F0',
@@ -474,7 +458,6 @@ const slashCommands = [
         mc: '#4A4A4A'
       };
       
-      // Emojis por personaje
       const emojis = {
         monika: '💚',
         sayori: '💙',
@@ -609,7 +592,6 @@ const slashCommands = [
 client.once('ready', async () => {
   console.log(`ClubAssistant v${BOT_VERSION} conectado como ${client.user.tag}`);
   
-  // no se nomas pa que se ponga predeterminado XD
   try {
     await client.application.commands.set(slashCommands);
     console.log('Comandos slash registrados correctamente');
@@ -617,3 +599,24 @@ client.once('ready', async () => {
     console.error('Error registrando comandos:', error);
   }
 });
+
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isCommand()) return;
+  
+  const command = slashCommands.find(cmd => cmd.name === interaction.commandName);
+  if (!command) return;
+  
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    const reply = { content: 'Error ejecutando comando', ephemeral: true };
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(reply);
+    } else {
+      await interaction.reply(reply);
+    }
+  }
+});
+
+client.login(process.env.DISCORD_TOKEN || process.env.TOKEN);
