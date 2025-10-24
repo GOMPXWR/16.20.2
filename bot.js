@@ -609,7 +609,7 @@ const slashCommands = [
 client.once('ready', async () => {
   console.log(`ClubAssistant v${BOT_VERSION} conectado como ${client.user.tag}`);
   
-  // Registrar comandos slash globalmente
+  // no se nomas pa que se ponga predeterminado XD
   try {
     await client.application.commands.set(slashCommands);
     console.log('Comandos slash registrados correctamente');
