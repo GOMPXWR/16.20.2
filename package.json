@@ -15,3 +15,24 @@
     "node": ">=16.9.0"
   }
 }
+```
+
+Lo importante es que tenga:
+- `"main": "bot.js"`
+- `"start": "node bot.js"` en scripts
+
+## 🔧 Si Railway sigue intentando ejecutar el archivo equivocado:
+
+1. Ve a tu proyecto en **Railway**
+2. Click en **Settings**
+3. Busca **Start Command** o **Custom Start Command**
+4. Ponle: `npm start` o `node bot.js`
+5. Guarda y redeploya
+
+## 📂 Tu estructura debe ser:
+```
+tu-proyecto/
+├── bot.js           ← Código del bot
+├── package.json     ← Configuración npm
+├── nixpacks.toml    ← Solo config (Railway NO ejecuta esto)
+└── .gitignore
