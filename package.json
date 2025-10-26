@@ -1,15 +1,14 @@
 {
   "name": "clubassistant",
-  "version": "2.6.1",
-  "description": "Bot de DDLC para fanarts, citas, trivia, noticias y videos.",
+  "version": "2.6.0",
+  "description": "Bot de DDLC para fanarts, citas, trivia, noticias y más.",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
   },
   "dependencies": {
-    "discord.js": "^13.6.0"
-  },
-  "engines": {
-    "node": ">=16.9.0"
+    "axios": "^1.7.3",
+    "cheerio": "^1.0.0-rc.12",
+    "discord.js": "^14.15.3"
   }
 }
