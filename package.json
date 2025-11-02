@@ -1,28 +1,18 @@
 {
   "name": "clubassistant",
-  "version": "2.6.1",
-  "description": "Asistente del Club de Literatura: fanarts, citas, trivia, videos y noticias de DDLC y Project Club.",
+  "version": "2.6.2",
+  "description": "ClubAssistant - bot en español para DDLC (fanart, citas, trivia, noticias)",
   "main": "bot.js",
   "type": "module",
   "scripts": {
     "start": "node bot.js"
   },
   "dependencies": {
-    "discord.js": "^14.15.3",
-    "node-fetch": "^3.3.2"
+    "axios": "^1.7.3",
+    "cheerio": "^1.0.0-rc.12",
+    "discord.js": "^14.15.3"
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "keywords": [
-    "discord",
-    "bot",
-    "ddlc",
-    "project club",
-    "fanart",
-    "trivia",
-    "anime"
-  ],
-  "author": "ClubAssistant Devs",
-  "license": "MIT"
+  }
 }
