@@ -18,7 +18,7 @@ async function isLinkAlive(url){
       const r = await axios.get(url, { maxRedirects: 2, timeout: 5000 });
       return r.status >= 200 && r.status < 400;
     }catch{
-      return false;
+      return false; 
     }
   }
 }
