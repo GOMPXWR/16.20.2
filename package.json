@@ -1,7 +1,7 @@
 {
   "name": "clubassistant",
-  "version": "2.6.0",
-  "description": "Bot de DDLC para fanarts, citas, trivia, noticias y más.",
+  "version": "2.6.1",
+  "description": "ClubAssistant - DDLC & Project Club notifications and utilities (es)",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
@@ -10,5 +10,8 @@
     "axios": "^1.7.3",
     "cheerio": "^1.0.0-rc.12",
     "discord.js": "^14.15.3"
+  },
+  "engines": {
+    "node": ">=16"
   }
 }
